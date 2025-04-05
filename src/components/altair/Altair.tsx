@@ -37,9 +37,20 @@ const declaration: FunctionDeclaration = {
 
 function AltairComponent() {
   const [jsonString, setJSONString] = useState<string>("");
-  const { client, setConfig } = useLiveAPIContext();
+  const { client, setConfig, projectContext } = useLiveAPIContext();
 
   useEffect(() => {
+    // Build system instruction with project context if available
+    let systemInstruction = 'You are my helpful assistant. Any time I ask you for a graph call the "render_altair" function I have provided you. Dont ask for additional information just make your best judgement.';
+    
+    if (projectContext && Object.keys(projectContext).length > 0) {
+      const contextDescription = JSON.stringify(projectContext, null, 2);
+      systemInstruction = `You are my helpful assistant. Here is the current project context you should be aware of: 
+${contextDescription}
+
+Any time I ask you for a graph call the "render_altair" function I have provided you. Dont ask for additional information just make your best judgement.`;
+    }
+
     setConfig({
       model: "models/gemini-2.0-flash-exp",
       generationConfig: {
@@ -51,7 +62,7 @@ function AltairComponent() {
       systemInstruction: {
         parts: [
           {
-            text: 'You are my helpful assistant. Any time I ask you for a graph call the "render_altair" function I have provided you. Dont ask for additional information just make your best judgement.',
+            text: systemInstruction,
           },
         ],
       },
@@ -61,7 +72,7 @@ function AltairComponent() {
         { functionDeclarations: [declaration] },
       ],
     });
-  }, [setConfig]);
+  }, [setConfig, projectContext]);
 
   useEffect(() => {
     const onToolCall = (toolCall: ToolCall) => {

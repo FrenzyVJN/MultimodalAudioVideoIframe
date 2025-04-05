@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import "./App.scss";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
 import { Altair } from "./components/altair/Altair";
@@ -35,10 +35,34 @@ function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   // either the screen capture, the video or null, if null we hide it
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+  const [initialProjectContext, setInitialProjectContext] = useState<any>({});
+
+  // This effect runs once when the component mounts to notify parent that iframe is ready
+  useEffect(() => {
+    // Notify parent that iframe is ready to receive context
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'IFRAME_READY' }, '*');
+      console.log('Notified parent that iframe is ready');
+    }
+    
+    // Initial check for URL parameters that might contain context
+    const urlParams = new URLSearchParams(window.location.search);
+    const contextParam = urlParams.get('context');
+    
+    if (contextParam) {
+      try {
+        const parsedContext = JSON.parse(decodeURIComponent(contextParam));
+        setInitialProjectContext(parsedContext);
+        console.log('Received initial context from URL params:', parsedContext);
+      } catch (e) {
+        console.error('Failed to parse context from URL params:', e);
+      }
+    }
+  }, []);
 
   return (
     <div className="App">
-      <LiveAPIProvider url={uri} apiKey={API_KEY}>
+      <LiveAPIProvider url={uri} apiKey={API_KEY} initialProjectContext={initialProjectContext}>
         <div className="streaming-console">
           <main>
             <div className="main-app-area">

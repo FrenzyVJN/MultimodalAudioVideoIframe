@@ -14,26 +14,50 @@
  * limitations under the License.
  */
 
-import { createContext, FC, ReactNode, useContext } from "react";
+import { createContext, FC, ReactNode, useContext, useState, useEffect } from "react";
 import { useLiveAPI, UseLiveAPIResults } from "../hooks/use-live-api";
 
-const LiveAPIContext = createContext<UseLiveAPIResults | undefined>(undefined);
+// Extended context to include project context
+interface LiveAPIContextProps extends UseLiveAPIResults {
+  projectContext: any;
+  setProjectContext: (context: any) => void;
+}
+
+const LiveAPIContext = createContext<LiveAPIContextProps | undefined>(undefined);
 
 export type LiveAPIProviderProps = {
   children: ReactNode;
   url?: string;
   apiKey: string;
+  initialProjectContext?: any;
 };
 
 export const LiveAPIProvider: FC<LiveAPIProviderProps> = ({
   url,
   apiKey,
+  initialProjectContext = {},
   children,
 }) => {
   const liveAPI = useLiveAPI({ url, apiKey });
+  const [projectContext, setProjectContext] = useState<any>(initialProjectContext);
+
+  // Listen for messages from parent window (iframe communication)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin if needed
+      // if (event.origin !== "https://your-parent-domain.com") return;
+      
+      if (event.data && typeof event.data === 'object' && event.data.type === 'PROJECT_CONTEXT') {
+        setProjectContext(event.data.context);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   return (
-    <LiveAPIContext.Provider value={liveAPI}>
+    <LiveAPIContext.Provider value={{ ...liveAPI, projectContext, setProjectContext }}>
       {children}
     </LiveAPIContext.Provider>
   );
